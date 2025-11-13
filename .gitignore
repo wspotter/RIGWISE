@@ -1,0 +1,15 @@
+node_modules/
+.next/
+dist/
+*.log
+.env
+.env.*
+/.venv
+backend/.venv
+__pycache__/
+*.py[cod]
+*.sqlite3
+package-lock.json
+/.idea/
+.vscode/
+/.DS_Store

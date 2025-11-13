@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts           Account[]
+  sessions           Session[]
+  hardwareProfiles   HardwareProfile[]
+  compatibilityTests CompatibilityAnalysis[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HardwareProfile {
+  id          String   @id @default(cuid())
+  userId      String?
+  name        String
+  cpuBrand    String
+  cpuModel    String
+  cpuCores    Int
+  cpuThreads  Int
+  gpuBrand    String
+  gpuModel    String
+  vramGB      Int
+  ramGB       Int
+  ramType     String
+  ramSpeed    Int?
+  storageGB   Int
+  storageType String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user                  User?                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  compatibilityAnalyses CompatibilityAnalysis[]
+  @@index([userId])
+}
+
+model LLMModel {
+  id              String   @id @default(cuid())
+  huggingFaceId   String   @unique
+  name            String
+  architecture    String
+  parameterCount  Float
+  quantization    String?
+  baseVramGB      Float
+  baseRamGB       Float
+  minStorageGB    Int
+  maxContextLength Int     @default(4096)
+  modelCardUrl    String?
+  lastSynced      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  compatibilityAnalyses CompatibilityAnalysis[]
+  @@index([huggingFaceId])
+}
+
+model CompatibilityAnalysis {
+  id        String   @id @default(cuid())
+  userId    String?
+  profileId String
+  modelId   String
+  isCompatible        Boolean
+  compatibilityScore  Float
+  estimatedVramGB     Float
+  estimatedRamGB      Float
+  estimatedStorageGB  Int
+  bottlenecks         Json?
+  recommendations     Json?
+  createdAt           DateTime @default(now())
+  user    User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile HardwareProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  model   LLMModel         @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([profileId])
+  @@index([modelId])
+}
+
+model UpgradeProduct {
+  id              String   @id @default(cuid())
+  type            String
+  brand           String
+  model           String
+  specs           Json
+  amazonLink      String?
+  neweggLink      String?
+  msrpUSD         Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([type])
+}
