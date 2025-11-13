@@ -1,13 +1,7 @@
-import { createContext } from '@/server/api/trpc/context'
-import { appRouter } from '@/server/api/trpc/root'
-import * as trpcNext from '@trpc/server/adapters/next'
+export async function GET() {
+  return new Response('Not Found', { status: 404 })
+}
 
-const handler = trpcNext.createNextApiHandler({
-  router: appRouter,
-  createContext: async (opts: any) => {
-    const ctx = await createContext()
-    return ctx
-  },
-})
-
-export { handler as GET, handler as POST }
+export async function POST() {
+  return new Response('Not Found', { status: 404 })
+}
