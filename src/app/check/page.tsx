@@ -22,8 +22,15 @@ export default function CheckPage() {
   const [profiles, setProfiles] = useState<any[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [saveMessage, setSaveMessage] = useState('')
 
   const analyzeMutation = trpc.compatibility.analyze.useMutation()
+  const createHardwareMutation = trpc.hardware.create.useMutation()
+  const hardwareListQuery = trpc.hardware.list.useQuery(undefined, {
+    enabled: false, // Don't auto-fetch on mount
+  })
 
   // Load theme preference on mount
   useEffect(() => {
@@ -78,35 +85,63 @@ export default function CheckPage() {
   }
 
   async function loadProfiles() {
-  try {
-    const data = await trpc.hardware.list.query()
-    setProfiles(data || [])
-  } catch (err) {
-      // noop
+    try {
+      const result = await hardwareListQuery.refetch()
+      setProfiles(result.data || [])
+    } catch (err) {
+      console.error('Failed to load profiles:', err)
     }
   }
 
   async function saveProfile() {
+    if (!profileName.trim()) {
+      setSaveMessage('Please enter a profile name')
+      return
+    }
+
     const hardware = {
-      name: `Profile ${new Date().toISOString()}`,
+      name: profileName.trim(),
       cpuCores: Number(cpuCores),
+      cpuThreads: Number(cpuCores) * 2, // Estimate
       vramGB: Number(vramGB),
       ramGB: Number(ramGB),
       storageGB: Number(storageGB),
-      cpuBrand: 'Unknown',
-      cpuModel: 'Unknown',
-      gpuBrand: 'Unknown',
-      gpuModel: 'Unknown',
-      storageType: 'SSD'
+      cpuBrand: 'Custom',
+      cpuModel: 'Custom CPU',
+      gpuBrand: 'Custom',
+      gpuModel: 'Custom GPU',
+      ramType: 'DDR4',
+      ramSpeed: 3200,
+      storageType: 'SSD',
+      isDefault: false
     }
-  const createMutation = trpc.hardware.create.useMutation()
-  try {
-    await createMutation.mutateAsync(hardware)
-    await loadProfiles()
-  } catch (err) {
-      // noop
+    
+    try {
+      await createHardwareMutation.mutateAsync(hardware)
+      await loadProfiles()
+      setSaveMessage('Profile saved successfully!')
+      setProfileName('')
+      setTimeout(() => {
+        setShowSaveDialog(false)
+        setSaveMessage('')
+      }, 2000)
+    } catch (err) {
+      setSaveMessage('Failed to save profile')
+      console.error('Save error:', err)
     }
   }
+
+  function loadProfile(profile: any) {
+    setCpuCores(profile.cpuCores)
+    setVramGB(profile.vramGB)
+    setRamGB(profile.ramGB)
+    setStorageGB(profile.storageGB)
+    setSelectedProfileId(profile.id)
+  }
+
+  useEffect(() => {
+    loadProfiles()
+  }, [])
 
   return (
     <main className={`min-h-screen transition-colors duration-300 ${
@@ -395,7 +430,7 @@ export default function CheckPage() {
                       : 'bg-slate-200 hover:bg-slate-300 text-slate-900'
                   }`}
                   type="button" 
-                  onClick={saveProfile}
+                  onClick={() => setShowSaveDialog(true)}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -404,6 +439,58 @@ export default function CheckPage() {
                 </button>
               </div>
             </form>
+
+            {/* Save Profile Dialog */}
+            {showSaveDialog && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className={`rounded-xl p-6 max-w-md w-full shadow-2xl ${
+                  isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
+                }`}>
+                  <h3 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Save Hardware Profile
+                  </h3>
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="Enter profile name..."
+                    className={`w-full px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 border ${
+                      isDark
+                        ? 'bg-slate-900/50 border-slate-600/50 text-white'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                    autoFocus
+                  />
+                  {saveMessage && (
+                    <p className={`mb-4 text-sm ${
+                      saveMessage.includes('success') ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {saveMessage}
+                    </p>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={saveProfile}
+                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSaveDialog(false)
+                        setProfileName('')
+                        setSaveMessage('')
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${
+                        isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Results Section */}
             {result && (
@@ -583,22 +670,67 @@ export default function CheckPage() {
                 </div>
               )}
               {profiles.length > 0 && (
-                <select 
-                  className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm border ${
-                    isDark
-                      ? 'bg-slate-900/50 border-slate-600/50 text-slate-100'
-                      : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                  value={selectedProfileId || ''} 
-                  onChange={(e)=> setSelectedProfileId(e.target.value)}
-                >
-                  <option value="">Select a profile</option>
-                  {profiles.map((p)=> (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.vramGB}GB VRAM, {p.ramGB}GB RAM)
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <select 
+                    className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm border mb-3 ${
+                      isDark
+                        ? 'bg-slate-900/50 border-slate-600/50 text-slate-100'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                    value={selectedProfileId || ''} 
+                    onChange={(e)=> setSelectedProfileId(e.target.value)}
+                  >
+                    <option value="">Select a profile</option>
+                    {profiles.map((p)=> (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => {
+                      const profile = profiles.find(p => p.id === selectedProfileId)
+                      if (profile) loadProfile(profile)
+                    }}
+                    disabled={!selectedProfileId}
+                    className={`w-full px-4 py-2 rounded-lg font-semibold transition-all ${
+                      selectedProfileId
+                        ? isDark
+                          ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                          : 'bg-cyan-500 hover:bg-cyan-600 text-white'
+                        : isDark
+                          ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Load Profile
+                  </button>
+                  {selectedProfileId && profiles.find(p => p.id === selectedProfileId) && (
+                    <div className={`mt-4 p-4 rounded-lg text-sm ${
+                      isDark ? 'bg-slate-900/50' : 'bg-slate-50'
+                    }`}>
+                      {(() => {
+                        const p = profiles.find(pr => pr.id === selectedProfileId)
+                        return p ? (
+                          <div className="space-y-2">
+                            <div className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+                              <span className="font-semibold">CPU:</span> {p.cpuCores} cores
+                            </div>
+                            <div className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+                              <span className="font-semibold">VRAM:</span> {p.vramGB} GB
+                            </div>
+                            <div className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+                              <span className="font-semibold">RAM:</span> {p.ramGB} GB
+                            </div>
+                            <div className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+                              <span className="font-semibold">Storage:</span> {p.storageGB} GB
+                            </div>
+                          </div>
+                        ) : null
+                      })()}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

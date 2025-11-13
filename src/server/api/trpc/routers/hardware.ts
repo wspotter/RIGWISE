@@ -6,16 +6,19 @@ export const hardwareRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1).max(64),
-        cpuBrand: z.string().optional(),
-        cpuModel: z.string().optional(),
+        cpuBrand: z.string(),
+        cpuModel: z.string(),
         cpuCores: z.number().int().min(1),
         cpuThreads: z.number().int().min(1),
-        gpuBrand: z.string().optional(),
-        gpuModel: z.string().optional(),
+        gpuBrand: z.string(),
+        gpuModel: z.string(),
         vramGB: z.number().int().min(1),
         ramGB: z.number().int().min(1),
+        ramType: z.string(),
+        ramSpeed: z.number().int().optional(),
         storageGB: z.number().int().min(1),
-        storageType: z.string().optional(),
+        storageType: z.string(),
+        isDefault: z.boolean().optional(),
       })
     )
   .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
