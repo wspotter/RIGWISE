@@ -1,5 +1,14 @@
-import { NextResponse } from 'next/server'
+import { createContext } from '@/server/api/trpc/context'
+import { appRouter } from '@/server/api/trpc/root'
+import * as trpcNext from '@trpc/server/adapters/next'
 
-export async function GET(request: Request) {
-  return NextResponse.json({ ok: true, message: 'tRPC placeholder endpoint — set up tRPC server to handle requests' })
-}
+const handler = trpcNext.createNextApiHandler({
+  router: appRouter,
+  createContext: async (opts) => {
+    // provide context with prisma
+    const ctx = await createContext()
+    return ctx
+  },
+})
+
+export { handler as GET, handler as POST }

@@ -14,6 +14,8 @@ export default function CheckPage() {
   const [batchSize, setBatchSize] = useState(1)
 
   const [result, setResult] = useState<any | null>(null)
+  const [profiles, setProfiles] = useState<any[]>([])
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
@@ -47,6 +49,44 @@ export default function CheckPage() {
       setResult({ error: err.message })
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadProfiles() {
+    try {
+      const res = await fetch('/api/hardware')
+      const data = await res.json()
+      if (data.ok) setProfiles(data.profiles || [])
+    } catch (err) {
+      // noop
+    }
+  }
+
+  async function saveProfile() {
+    const hardware = {
+      name: `Profile ${new Date().toISOString()}`,
+      cpuCores: Number(cpuCores),
+      vramGB: Number(vramGB),
+      ramGB: Number(ramGB),
+      storageGB: Number(storageGB),
+      cpuBrand: 'Unknown',
+      cpuModel: 'Unknown',
+      gpuBrand: 'Unknown',
+      gpuModel: 'Unknown',
+      storageType: 'SSD'
+    }
+    try {
+      const res = await fetch('/api/hardware', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(hardware),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        loadProfiles()
+      }
+    } catch (err) {
+      // noop
     }
   }
 
@@ -105,7 +145,8 @@ export default function CheckPage() {
           </section>
 
           <div className="flex justify-end">
-            <button className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-500" type="submit" disabled={loading}>{loading ? 'Running...' : 'Analyze'}</button>
+            <button className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-500 mr-2" type="submit" disabled={loading}>{loading ? 'Running...' : 'Analyze'}</button>
+            <button className="bg-slate-600 px-4 py-2 rounded hover:bg-slate-500" type="button" onClick={saveProfile}>Save Profile</button>
           </div>
         </form>
 
@@ -124,6 +165,19 @@ export default function CheckPage() {
             )}
           </div>
         )}
+        <div className="mt-4 p-4 bg-slate-800 rounded">
+          <h3 className="font-semibold">Saved Profiles</h3>
+          <div className="mt-2">
+            <button className="mr-2 p-2 bg-slate-700 rounded" onClick={loadProfiles}>Refresh</button>
+            {profiles.length === 0 && <div className="mt-2 text-slate-400">No saved profiles</div>}
+            {profiles.length > 0 && (
+              <select className="mt-2 p-2 bg-slate-700 rounded" value={selectedProfileId || ''} onChange={(e)=> setSelectedProfileId(e.target.value)}>
+                <option value="">Select a profile</option>
+                {profiles.map((p)=> <option key={p.id} value={p.id}>{p.name} ({p.vramGB}GB VRAM, {p.ramGB}GB RAM)</option>)}
+              </select>
+            )}
+          </div>
+        </div>
 
       </div>
     </main>
