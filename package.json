@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "dev": "node ./scripts/start-dev.js",
+    "dev": "node ./scripts/start-dev.js",
+    "backend": "bash ./scripts/start-backend.sh",
+    "dev:all": "concurrently \"npm run backend\" \"npm run dev\"",
     "build": "next build",
+    "test": "vitest",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
@@ -29,8 +32,10 @@
     "zod": "^3.22.2"
   },
   "devDependencies": {
+    "concurrently": "^8.0.1",
     "@types/node": "24.10.1",
-    "@types/react": "19.2.4",
+  "@types/react": "19.2.4",
+  "vitest": "^1.2.0",
     "autoprefixer": "^10.4.13",
     "eslint": "^8.0.0",
     "eslint-config-next": "^13.2.4",
