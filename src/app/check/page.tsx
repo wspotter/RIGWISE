@@ -152,6 +152,25 @@ export default function CheckPage() {
                 <div className="mt-2">Estimated VRAM: {result.estimatedVramGB.toFixed(1)} GB</div>
                 <div className="mt-2">Estimated RAM: {result.estimatedRamGB.toFixed(1)} GB</div>
                 <div className="mt-2">Bottlenecks: {result.bottlenecks?.join(', ') || 'None'}</div>
+                {result.recommendations && result.recommendations.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="font-semibold">Recommended Upgrades</h4>
+                    <ul className="mt-2 space-y-2">
+                      {result.recommendations.map((r:any) => (
+                        <li key={r.product.id} className="p-2 bg-slate-700 rounded flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold">{r.product.brand} {r.product.model}</div>
+                            <div className="text-slate-400 text-sm">{r.type} — {r.reason}</div>
+                          </div>
+                          <div className="ml-4">
+                            {r.product.amazonLink && <a className="bg-yellow-500 px-3 py-1 rounded text-black mr-2" href={r.product.amazonLink} target="_blank" rel="noreferrer">Amazon</a>}
+                            {r.product.neweggLink && <a className="bg-orange-500 px-3 py-1 rounded text-black" href={r.product.neweggLink} target="_blank" rel="noreferrer">Newegg</a>}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>

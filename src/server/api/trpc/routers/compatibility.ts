@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createTRPCRouter, publicProcedure } from '../trpc'
 import { calculateRAMRequirement, calculateVRAMRequirement } from '@/lib/compatibility'
+import { recommendUpgrades } from '@/lib/recommendations'
 
 export const compatibilityRouter = createTRPCRouter({
   analyze: publicProcedure
@@ -21,7 +22,7 @@ export const compatibilityRouter = createTRPCRouter({
         batchSize: z.number().int().min(1).default(1),
       })
     )
-  .mutation(async ({ input }: { input: any }) => {
+  .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
       const { profile, model, contextLength, batchSize } = input
 
       const estimatedVram = calculateVRAMRequirement(model.parameterCount, model.quantization, contextLength, batchSize)
@@ -57,6 +58,8 @@ export const compatibilityRouter = createTRPCRouter({
         score -= 10
       }
 
+  const recommended = await recommendUpgrades(ctx.prisma, { estimatedVramGB: estimatedVram, estimatedRamGB: estimatedRam }, profile)
+
       return {
         isCompatible,
         compatibilityScore: Math.max(0, score),
@@ -64,6 +67,7 @@ export const compatibilityRouter = createTRPCRouter({
         estimatedRamGB: estimatedRam,
         estimatedStorageGB: model.minStorageGB,
         bottlenecks,
+        recommendations: recommended,
       }
     }),
 })
