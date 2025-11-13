@@ -20,12 +20,21 @@ export const compatibilityRouter = createTRPCRouter({
         }),
         contextLength: z.number().int().min(512).default(4096),
         batchSize: z.number().int().min(1).default(1),
+        isMoE: z.boolean().optional(),
+        activeExperts: z.number().int().min(1).optional(),
+        totalExperts: z.number().int().min(1).optional(),
       })
     )
   .mutation(async ({ ctx, input }: { ctx: any; input: any }) => {
-      const { profile, model, contextLength, batchSize } = input
+      const { profile, model, contextLength, batchSize, isMoE, activeExperts, totalExperts } = input
 
-      const estimatedVram = calculateVRAMRequirement(model.parameterCount, model.quantization, contextLength, batchSize)
+      const estimatedVram = calculateVRAMRequirement(
+        model.parameterCount, 
+        model.quantization, 
+        contextLength, 
+        batchSize,
+        { isMoE, activeExperts, totalExperts }
+      )
       const estimatedRam = calculateRAMRequirement(model.parameterCount, contextLength)
 
       const bottlenecks: string[] = []

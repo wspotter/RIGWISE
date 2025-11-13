@@ -11,12 +11,29 @@ export function bytesPerParamForQuant(quantization: string | null) {
   }
 }
 
-export function calculateVRAMRequirement(parameterBillions: number, quantization: string | null, contextLength: number, batchSize = 1) {
+export function calculateVRAMRequirement(
+  parameterBillions: number, 
+  quantization: string | null, 
+  contextLength: number, 
+  batchSize = 1,
+  options?: { isMoE?: boolean; activeExperts?: number; totalExperts?: number }
+) {
   const bytesPerParam = bytesPerParamForQuant(quantization)
-  const modelWeightsGB = (parameterBillions * 1e9 * bytesPerParam) / 1e9
+  
+  // For MoE models, calculate based on active parameters
+  let effectiveParams = parameterBillions
+  if (options?.isMoE && options.activeExperts && options.totalExperts) {
+    // Only active experts need to be loaded in VRAM, shared params + active experts
+    // Typical: 2 active out of 8 experts = ~25% of expert params + 100% of shared params
+    const expertRatio = options.activeExperts / options.totalExperts
+    // Assume 20% shared params, 80% expert params
+    effectiveParams = parameterBillions * (0.2 + (0.8 * expertRatio))
+  }
+  
+  const modelWeightsGB = (effectiveParams * 1e9 * bytesPerParam) / 1e9
 
-  const kvCacheGB = (parameterBillions * contextLength / 1000) * 0.1 * batchSize
-  const overheadGB = parameterBillions * 0.2
+  const kvCacheGB = (effectiveParams * contextLength / 1000) * 0.1 * batchSize
+  const overheadGB = effectiveParams * 0.2
 
   return modelWeightsGB + kvCacheGB + overheadGB
 }
@@ -30,7 +47,17 @@ export function calculateRAMRequirement(parameterBillions: number, contextLength
 }
 
 export function analyzeCompatibility(hardware: any, model: any, options:any) {
-  const requiredVram = calculateVRAMRequirement(model.parameterCount, model.quantization, options.contextLength, options.batchSize)
+  const requiredVram = calculateVRAMRequirement(
+    model.parameterCount, 
+    model.quantization, 
+    options.contextLength, 
+    options.batchSize,
+    { 
+      isMoE: options.isMoE, 
+      activeExperts: options.activeExperts, 
+      totalExperts: options.totalExperts 
+    }
+  )
   const requiredRam = calculateRAMRequirement(model.parameterCount, options.contextLength)
 
   const bottlenecks: string[] = []

@@ -27,4 +27,17 @@ describe('compatibility calculations', () => {
     expect(result.isCompatible).toBe(false)
     expect(result.bottlenecks).toEqual(expect.arrayContaining([expect.stringContaining('Insufficient VRAM')]))
   })
+
+  it('MoE models require less VRAM than dense models', () => {
+    // Dense 56B model
+    const denseVram = calculateVRAMRequirement(56, '8-bit', 4096, 1)
+    
+    // Mixtral 8x7B (56B total, but only 2 experts active = ~14B active)
+    const moeVram = calculateVRAMRequirement(56, '8-bit', 4096, 1, { isMoE: true, activeExperts: 2, totalExperts: 8 })
+    
+    expect(moeVram).toBeLessThan(denseVram)
+    expect(moeVram).toBeGreaterThan(denseVram * 0.2) // Should be ~30% of dense
+    expect(moeVram).toBeLessThan(denseVram * 0.5)
+  })
 })
+
