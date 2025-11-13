@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
+import { trpc } from '../../utils/trpc'
 
 export default function CheckPage() {
   const [cpuCores, setCpuCores] = useState(8)
@@ -17,6 +18,8 @@ export default function CheckPage() {
   const [profiles, setProfiles] = useState<any[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const analyzeMutation = trpc.compatibility.analyze.useMutation()
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -37,14 +40,9 @@ export default function CheckPage() {
     }
 
     try {
-      const res = await fetch('/api/compatibility', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hardware, model, contextLength: Number(contextLength), batchSize: Number(batchSize) })
-      })
-      const data = await res.json()
-      if (!data.ok) throw new Error(data.error || 'API error')
-      setResult(data.result)
+      // Use trpc mutation to analyze compatibility
+      const analysis = await analyzeMutation.mutateAsync({ profile: hardware, model, contextLength: Number(contextLength), batchSize: Number(batchSize) })
+      setResult(analysis)
     } catch (err:any) {
       setResult({ error: err.message })
     } finally {
@@ -53,11 +51,10 @@ export default function CheckPage() {
   }
 
   async function loadProfiles() {
-    try {
-      const res = await fetch('/api/hardware')
-      const data = await res.json()
-      if (data.ok) setProfiles(data.profiles || [])
-    } catch (err) {
+  try {
+    const data = await trpc.hardware.list.query()
+    setProfiles(data || [])
+  } catch (err) {
       // noop
     }
   }
@@ -75,17 +72,11 @@ export default function CheckPage() {
       gpuModel: 'Unknown',
       storageType: 'SSD'
     }
-    try {
-      const res = await fetch('/api/hardware', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(hardware),
-      })
-      const data = await res.json()
-      if (data.ok) {
-        loadProfiles()
-      }
-    } catch (err) {
+  const createMutation = trpc.hardware.create.useMutation()
+  try {
+    await createMutation.mutateAsync(hardware)
+    await loadProfiles()
+  } catch (err) {
       // noop
     }
   }

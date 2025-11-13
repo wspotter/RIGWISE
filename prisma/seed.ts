@@ -36,7 +36,8 @@ async function main() {
 
   for (const p of products) {
     try {
-      await prisma.upgradeProduct.create({ data: p })
+      const data = { ...p, specs: typeof p.specs === 'string' ? p.specs : JSON.stringify(p.specs) }
+      await prisma.upgradeProduct.create({ data })
     } catch (e) {
       // ignore duplicates on re-run
     }

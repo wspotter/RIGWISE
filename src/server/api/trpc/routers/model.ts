@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { createTRPCRouter, publicProcedure } from '../trpc'
-import { parseModelCard } from '../../../lib/huggingface'
+import { parseModelCard } from '../../../../lib/huggingface'
 
 export const modelRouter = createTRPCRouter({
   parseHuggingFace: publicProcedure

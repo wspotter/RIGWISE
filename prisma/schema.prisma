@@ -3,7 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  // For local development, use SQLite if DATABASE_URL points to a local file (file:./dev.db)
+  // Switch to 'postgresql' for production deployments.
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -27,12 +29,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -100,8 +102,9 @@ model CompatibilityAnalysis {
   estimatedVramGB     Float
   estimatedRamGB      Float
   estimatedStorageGB  Int
-  bottlenecks         Json?
-  recommendations     Json?
+  // Stored as JSON string for SQLite local dev, decode on read.
+  bottlenecks         String?
+  recommendations     String?
   createdAt           DateTime @default(now())
   user    User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   profile HardwareProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -116,7 +119,8 @@ model UpgradeProduct {
   type            String
   brand           String
   model           String
-  specs           Json
+  // Stored as JSON string for SQLite local dev, decode on read.
+  specs           String
   amazonLink      String?
   neweggLink      String?
   msrpUSD         Float?
